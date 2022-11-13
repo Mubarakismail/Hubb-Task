@@ -24,6 +24,28 @@ function collectAllData($times)
     return $data;
 }
 
+function validateInput($input)
+{
+    $doctorName = "";
+    $diagnosis = 0;
+    $data = [];
+    if (!isset($input['doctorName']) || $input['doctorName'] == '') {
+        $data['errors'] = true;
+        $data['message'] = "doctor name is required";
+        return $data;
+    } else {
+        $doctorName = $input['doctorName'];
+    }
+    if (!isset($input['diagnosis']) || !is_numeric($input['diagnosis'])) {
+        $data['errors'] = true;
+        $data['message'] = "diagnosis is required and must be numeric";
+        return $data;
+    } else {
+        $diagnosis = $input['diagnosis'];
+    }
+    return ['errors' => false, 'doctorName' => $doctorName, 'diagnosis' => $diagnosis];
+}
+
 $APIResult = CallAPI('GET', 'https://jsonmock.hackerrank.com/api/medical_records');
 
 // if U need search in first page replace variable after = sign 
@@ -32,16 +54,26 @@ $APIResult = CallAPI('GET', 'https://jsonmock.hackerrank.com/api/medical_records
  change (collectAllData($APIResult['total_pages'])) to ($APIResult['data']) */
 $allPagesResult = $APIResult['data'];
 
-$doctorName = $_POST['doctorName'];
-$diagnosis = $_POST['diagnosis'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-$mn = 1000;
-$mx = 0;
-foreach ($allPagesResult as $row) {
-    if ($row['doctor']['name'] == $doctorName && $row['diagnosis']['id'] == $diagnosis) {
-        $mx = max($mx, $row['vitals']['bodyTemperature']);
-        $mn = min($mn, $row['vitals']['bodyTemperature']);
+    $data = validateInput($_POST);
+    if ($data['errors'] == true) {
+        http_response_code(400);
+        echo json_encode($data);
+        exit;
     }
+    $doctorName = $data['doctorName'];
+    $diagnosis = $data['diagnosis'];
+    $mn = 1000;
+    $mx = 0;
+    foreach ($allPagesResult as $row) {
+        if ($row['doctor']['name'] == $doctorName && $row['diagnosis']['id'] == $diagnosis) {
+            $mx = max($mx, $row['vitals']['bodyTemperature']);
+            $mn = min($mn, $row['vitals']['bodyTemperature']);
+        }
+    }
+    echo json_encode([$mn, $mx]);
+} else {
+    http_response_code(405);
+    echo json_encode(["message" => "Send method as POST"]);
 }
-
-echo json_encode([$mn, $mx]);
